@@ -21,6 +21,7 @@ data TwitterBotConfig = TwitterBotConfig {
 		accessToken       :: String,
 		accessTokenSecret :: String
 	}
+	deriving (Eq, Show)
 
 tweetUrl = fromJust $ parseURL "https://api.twitter.com/1/statuses/update.json"
 
