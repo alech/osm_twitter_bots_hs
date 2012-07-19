@@ -1,11 +1,16 @@
 module Config
-	(parseConfigFile)
+	(
+	parseConfigFile,
+	OSMConfig(..),
+	osmApiChangeSetUrl
+	)
 	where
 
 import Tweet
 import Data.Yaml.YamlLight
 import Data.Maybe
 import qualified Data.ByteString.Char8 as BC8 -- TODO look into language feature
+import Data.List (intercalate)
 
 data OSMConfig = OSMConfig {
 		minLat :: Double,
@@ -37,3 +42,9 @@ configFromMap yl =
 	      	      consumerSecret    = lookupKey yl "consumer_secret"
 	      	      accessToken       = lookupKey yl "access_token"
 	      	      accessTokenSecret = lookupKey yl "access_token_secret"
+
+-- construct changeset API URL
+osmApiChangeSetUrl :: OSMConfig -> String
+osmApiChangeSetUrl (OSMConfig minLat minLon maxLat maxLon) =
+	"http://api.openstreetmap.org/api/0.6/changesets?bbox=" ++ csv [minLon, minLat, maxLon, maxLat]
+	where csv = (intercalate ",") . (map show)
