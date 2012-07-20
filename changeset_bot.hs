@@ -7,14 +7,20 @@ import OSM
 import System.Directory (getHomeDirectory, doesFileExist)
 import System.FilePath ((</>))
 import System.Exit (exitFailure)
+import System.IO (hPutStrLn, stderr)
 
 main = do
 	configFile <- getConfigFilePath
 	fileExists <- doesFileExist configFile
 	if not fileExists then
-		exitFailure
+		exitWithWarning
 	else
 		parseAndAct configFile
+
+exitWithWarning :: IO ()
+exitWithWarning = do
+	hPutStrLn stderr "Missing config file (~/.changeset_bot.config)!"
+	exitFailure
 
 -- ~/.changeset_bot.config
 getConfigFilePath :: IO FilePath
@@ -26,6 +32,7 @@ parseAndAct :: FilePath -> IO ()
 parseAndAct configFile = do
 	configs <- parseConfigFile configFile
 	mapM_ (\(oConf, tConf) -> getChangeSetsAndTweet oConf tConf) configs
+	return ()
 
 getChangeSetsAndTweet :: OSMConfig -> TwitterBotConfig -> IO ()
 getChangeSetsAndTweet osmConfig twitterBotConfig = do
@@ -35,3 +42,4 @@ getChangeSetsAndTweet osmConfig twitterBotConfig = do
 getChangeSets :: String -> IO [OSMChangeSet]
 getChangeSets url = do
 	-- get via curl, and pass to changeSetsFromXML
+	return []
