@@ -1,6 +1,8 @@
 module OSM (
 		OSMChangeSet(..),
-		changeSetsFromXML
+		BoundingBox(..),
+		changeSetsFromXML,
+		changeSetInsideBoundingBox
 	)
 	where
 
@@ -76,3 +78,8 @@ changesetElementToChangeSet changesetElem =
 	      	      minLon = doubleAttr "min_lon" changesetElem
 	      	      maxLat = doubleAttr "max_lat" changesetElem
 	      	      maxLon = doubleAttr "max_lon" changesetElem
+
+-- checks whether a given changeset is inside a bounding box
+changeSetInsideBoundingBox :: OSMChangeSet -> BoundingBox -> Bool
+changeSetInsideBoundingBox (OSMChangeSet _ _ _ (BoundingBox minLat1 minLon1 maxLat1 maxLon1) _ _) (BoundingBox minLat2 minLon2 maxLat2 maxLon2) =
+	(minLat1 > minLat2) && (minLon1 > minLon2) && (maxLat1 < maxLat2) && (maxLon1 < maxLon2)

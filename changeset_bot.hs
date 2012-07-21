@@ -34,9 +34,9 @@ parseAndAct configFile = do
 	mapM_ (\(oConf, tConf) -> getChangeSetsAndTweet oConf tConf) configs
 	return ()
 
-getChangeSetsAndTweet :: OSMConfig -> TwitterBotConfig -> IO ()
-getChangeSetsAndTweet osmConfig twitterBotConfig = do
-	let apiUrl = osmApiChangeSetUrl osmConfig
+getChangeSetsAndTweet :: BoundingBox -> TwitterBotConfig -> IO ()
+getChangeSetsAndTweet bb twitterBotConfig = do
+	let apiUrl = osmApiChangeSetUrl bb
 	putStrLn apiUrl
 
 getChangeSets :: String -> IO [OSMChangeSet]
