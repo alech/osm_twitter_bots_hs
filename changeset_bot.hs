@@ -30,7 +30,7 @@ exitWithWarning = do
 	hPutStrLn stderr "Missing config file (~/.changeset_bot.config)!"
 	exitFailure
 
--- ~/.changeset_bot.config
+-- ~/.changeset_bot.[config|update]
 getConfigFilePath :: String -> IO FilePath
 getConfigFilePath extension = do
 	homeDir <- getHomeDirectory
@@ -51,21 +51,26 @@ getCurrentTimeString = do
 	time <- getCurrentTime
 	return (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S+00:00" time)
 
+-- 'and' on functions. yeah!
+(.&&.) :: (a -> Bool) -> (a -> Bool) -> (a -> Bool)
+(.&&.) f g a = (f a) && (g a)
+
 getChangeSetsAndTweet :: BoundingBox -> TwitterBotConfig -> String -> [Integer] -> IO ()
 getChangeSetsAndTweet bb twitterBotConfig time csAlreadyPosted = do
-	let apiUrl = osmApiChangeSetUrl bb time
 	currentTimeString <- getCurrentTimeString
 	changeSets <- getChangeSets apiUrl
-	let relevantChangeSets = filter (\cs -> not (changeSetId cs `elem` csAlreadyPosted)) $ filter (\cs -> changeSetInsideBoundingBox cs bb) $ filter (not . open) changeSets
-	mapM_ (tweetAndWriteUpdateFile twitterBotConfig currentTimeString) relevantChangeSets
+	mapM_ (tweetAndWriteUpdateFile twitterBotConfig currentTimeString) $ relevant changeSets
 	return ()
-	-- update last_update_file
+	where apiUrl = osmApiChangeSetUrl bb time
+	      relevant = filter (notAlreadyPosted .&&. insideBB .&&. (not . open))
+	      	where notAlreadyPosted = (\cs -> not (changeSetId cs `elem` csAlreadyPosted))
+	      	      insideBB = (\cs -> changeSetInsideBoundingBox cs bb)
 
 tweetAndWriteUpdateFile :: TwitterBotConfig -> String -> OSMChangeSet -> IO ()
 tweetAndWriteUpdateFile twitterBotConfig time cs = do
 	tweetResult <- tweet twitterBotConfig $ tweetFromChangeSet cs
 	updateFile <- getUpdateFilePath
-	(lastUpdateTime, changeSetsAlreadyPosted) <- getUpdatesFromFile updateFile
+	(_, changeSetsAlreadyPosted) <- getUpdatesFromFile updateFile
 	if tweetResult then
 		writeUpdatesToFile updateFile (time, (changeSetId cs):changeSetsAlreadyPosted)
 	else
