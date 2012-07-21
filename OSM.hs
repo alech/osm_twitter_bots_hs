@@ -20,8 +20,13 @@ data OSMChangeSet = OSMChangeSet {
 	user        :: String,
 	open        :: Bool,
 	boundingBox :: BoundingBox,
-	comment     :: String
+	comment     :: String,
+	created_by  :: String
 } deriving (Show, Eq)
+
+-- order by ID
+instance Ord OSMChangeSet where
+	(OSMChangeSet id1 _ _ _ _ _) `compare` (OSMChangeSet id2 _ _ _ _ _) = id1 `compare` id2
 
 -- Text.XML.Light helper functions
 qN :: String -> QName
@@ -35,14 +40,14 @@ attr key =
 doubleAttr :: String -> Element -> Double
 doubleAttr key elem = read $ attr key elem :: Double
 
--- extract the comment value from a changeset element, given the following format
+-- extract the tag value from a changeset element, given the following format
 -- <changeset ...>
---     <tag k="comment" v="Modified via wheelmap.org"/>
+--     <tag k="key" v="value"/>
 -- </changeset>
-extractComment :: Element -> String
-extractComment changesetElem =
+extractTagValue :: String -> Element -> String
+extractTagValue key changesetElem =
 	concat $ mapMaybe extractValue $ filterElements isCommentKey changesetElem
-	where isCommentKey e = (findAttr (qN "k") e) == Just "comment"
+	where isCommentKey e = (findAttr (qN "k") e) == Just key
 	      extractValue = findAttr (qN "v")
 
 -- get a list of changesets from an OSM API reply
@@ -60,11 +65,12 @@ osmElementToChangeSets osmElem =
 -- FIXME refactor
 changesetElementToChangeSet :: Element -> OSMChangeSet
 changesetElementToChangeSet changesetElem = 
-	OSMChangeSet csId user open bb comment
+	OSMChangeSet csId user open bb comment createdBy
 	where csId = read $ attr "id" changesetElem :: Integer
 	      user = attr "user" changesetElem
 	      open = "true" == attr "open" changesetElem
-	      comment = extractComment changesetElem
+	      comment   = extractTagValue "comment" changesetElem
+	      createdBy = extractTagValue "created_by" changesetElem
 	      bb   = BoundingBox minLat minLon maxLat maxLon
 	      	where minLat = doubleAttr "min_lat" changesetElem
 	      	      minLon = doubleAttr "min_lon" changesetElem
