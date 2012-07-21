@@ -57,16 +57,19 @@ getChangeSetsAndTweet bb twitterBotConfig time csAlreadyPosted = do
 	currentTimeString <- getCurrentTimeString
 	changeSets <- getChangeSets apiUrl
 	let relevantChangeSets = filter (\cs -> not (changeSetId cs `elem` csAlreadyPosted)) $ filter (\cs -> changeSetInsideBoundingBox cs bb) $ filter (not . open) changeSets
-	mapM_ (tweetAndWriteUpdateFile currentTimeString) relevantChangeSets
+	mapM_ (tweetAndWriteUpdateFile twitterBotConfig currentTimeString) relevantChangeSets
 	return ()
 	-- update last_update_file
 
-tweetAndWriteUpdateFile :: String -> OSMChangeSet -> IO ()
-tweetAndWriteUpdateFile time cs = do
-	putStrLn $ tweetFromChangeSet cs
+tweetAndWriteUpdateFile :: TwitterBotConfig -> String -> OSMChangeSet -> IO ()
+tweetAndWriteUpdateFile twitterBotConfig time cs = do
+	tweetResult <- tweet twitterBotConfig $ tweetFromChangeSet cs
 	updateFile <- getUpdateFilePath
 	(lastUpdateTime, changeSetsAlreadyPosted) <- getUpdatesFromFile updateFile
-	writeUpdatesToFile updateFile (time, (changeSetId cs):changeSetsAlreadyPosted)
+	if tweetResult then
+		writeUpdatesToFile updateFile (time, (changeSetId cs):changeSetsAlreadyPosted)
+	else
+		return ()
 	return ()
 
 getChangeSets :: String -> IO [OSMChangeSet]
