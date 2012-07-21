@@ -93,9 +93,10 @@ tCoShortenedUrlLength = 23
 tweetFromChangeSet :: OSMChangeSet -> String
 tweetFromChangeSet (OSMChangeSet csId user _ _ comment createdBy) = text ++ " http://www.openstreetmap.org/browse/changeset/" ++ (show csId)
 	where text = head $ dropWhile (\t -> length t > (140 - tCoShortenedUrlLength)) options
-	      options = [ commentOrNot ++ " by " ++ user ++ " (" ++ createdBy ++ ")",
+	      options = [ commentOrNot ++ " by " ++ user ++ createdByOrNot,
 	                  commentOrNot ++ " by " ++ user,
 	                  commentOrNot ] ++ shortenedComments comment ++ [""]
 	      	where
 	      		shortenedComments comment = map (\e -> unwords e ++ " ...") $ reverse $ inits $ words comment
 	      commentOrNot = if comment == "" then "(no comment)" else comment
+	      createdByOrNot = if createdBy == "" then "" else " (" ++ createdBy ++ ")"

@@ -14,10 +14,11 @@ import Text.XML.Light (parseXML)
 import Data.Time.Clock (getCurrentTime)
 import Data.Time.Format (formatTime)
 import Network.Curl (curlGetString)
+import Control.Concurrent (threadDelay)
 
 main = do
 	configFile <- getConfigFilePath "config"
-	updateFile <- getConfigFilePath "last_update"
+	updateFile <- getUpdateFilePath
 	fileExists <- doesFileExist configFile
 	if not fileExists then
 		exitWithWarning
@@ -35,10 +36,11 @@ getConfigFilePath extension = do
 	homeDir <- getHomeDirectory
 	return $ homeDir </> ".changeset_bot." ++ extension
 
+getUpdateFilePath = do
+	getConfigFilePath "last_update"
+
 parseAndAct :: FilePath -> FilePath -> IO ()
 parseAndAct configFile updateFile = do
-	currentTimeString <- getCurrentTimeString
-	putStrLn currentTimeString
 	configs <- parseConfigFile configFile
 	(lastUpdateTime, changeSetsAlreadyPosted) <- getUpdatesFromFile updateFile
 	mapM_ (\(oConf, tConf) -> getChangeSetsAndTweet oConf tConf lastUpdateTime changeSetsAlreadyPosted) configs
@@ -52,15 +54,23 @@ getCurrentTimeString = do
 getChangeSetsAndTweet :: BoundingBox -> TwitterBotConfig -> String -> [Integer] -> IO ()
 getChangeSetsAndTweet bb twitterBotConfig time csAlreadyPosted = do
 	let apiUrl = osmApiChangeSetUrl bb time
+	currentTimeString <- getCurrentTimeString
 	changeSets <- getChangeSets apiUrl
 	let relevantChangeSets = filter (\cs -> not (changeSetId cs `elem` csAlreadyPosted)) $ filter (\cs -> changeSetInsideBoundingBox cs bb) $ filter (not . open) changeSets
-	mapM_ (putStrLn . tweetFromChangeSet) relevantChangeSets
+	mapM_ (tweetAndWriteUpdateFile currentTimeString) relevantChangeSets
 	return ()
 	-- update last_update_file
+
+tweetAndWriteUpdateFile :: String -> OSMChangeSet -> IO ()
+tweetAndWriteUpdateFile time cs = do
+	putStrLn $ tweetFromChangeSet cs
+	updateFile <- getUpdateFilePath
+	(lastUpdateTime, changeSetsAlreadyPosted) <- getUpdatesFromFile updateFile
+	writeUpdatesToFile updateFile (time, (changeSetId cs):changeSetsAlreadyPosted)
+	return ()
 
 getChangeSets :: String -> IO [OSMChangeSet]
 getChangeSets url = do
 	-- FIXME deal with errors
 	curlResult <- curlGetString url []
-	putStrLn $ url
 	return (changeSetsFromXML $ parseXML $ snd curlResult)
