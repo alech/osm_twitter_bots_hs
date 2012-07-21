@@ -53,7 +53,8 @@ getChangeSetsAndTweet :: BoundingBox -> TwitterBotConfig -> String -> [Integer] 
 getChangeSetsAndTweet bb twitterBotConfig time csAlreadyPosted = do
 	let apiUrl = osmApiChangeSetUrl bb time
 	changeSets <- getChangeSets apiUrl
-	putStrLn $ show changeSets
+	let relevantChangeSets = filter (\cs -> not (changeSetId cs `elem` csAlreadyPosted)) $ filter (\cs -> changeSetInsideBoundingBox cs bb) $ filter (not . open) changeSets
+	putStrLn $ show relevantChangeSets
 	return ()
 	-- update last_update_file
 
