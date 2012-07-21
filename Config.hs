@@ -37,7 +37,7 @@ configFromMap yl =
 	      	      accessTokenSecret = lookupKey yl "access_token_secret"
 
 -- construct changeset API URL
-osmApiChangeSetUrl :: BoundingBox -> String
-osmApiChangeSetUrl (BoundingBox minLat minLon maxLat maxLon) =
-	"http://api.openstreetmap.org/api/0.6/changesets?bbox=" ++ csv [minLon, minLat, maxLon, maxLat]
+osmApiChangeSetUrl :: BoundingBox -> String -> String
+osmApiChangeSetUrl (BoundingBox minLat minLon maxLat maxLon) time =
+	"http://api.openstreetmap.org/api/0.6/changesets?bbox=" ++ csv [minLon, minLat, maxLon, maxLat] ++ "&time=" ++ time
 	where csv = (intercalate ",") . (map show)
