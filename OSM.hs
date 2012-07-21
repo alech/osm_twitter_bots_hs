@@ -2,12 +2,14 @@ module OSM (
 		OSMChangeSet(..),
 		BoundingBox(..),
 		changeSetsFromXML,
-		changeSetInsideBoundingBox
+		changeSetInsideBoundingBox,
+		tweetFromChangeSet
 	)
 	where
 
 import Text.XML.Light
 import Data.Maybe (mapMaybe, fromJust)
+import Data.List (inits)
 
 data BoundingBox = BoundingBox {
 	minLat      :: Double,
@@ -23,7 +25,7 @@ data OSMChangeSet = OSMChangeSet {
 	open        :: Bool,
 	boundingBox :: BoundingBox,
 	comment     :: String,
-	created_by  :: String
+	createdBy  :: String
 } deriving (Show, Eq)
 
 -- order by ID
@@ -83,3 +85,17 @@ changesetElementToChangeSet changesetElem =
 changeSetInsideBoundingBox :: OSMChangeSet -> BoundingBox -> Bool
 changeSetInsideBoundingBox (OSMChangeSet _ _ _ (BoundingBox minLat1 minLon1 maxLat1 maxLon1) _ _) (BoundingBox minLat2 minLon2 maxLat2 maxLon2) =
 	(minLat1 > minLat2) && (minLon1 > minLon2) && (maxLat1 < maxLat2) && (maxLon1 < maxLon2)
+
+-- length of shortened t.co URLs
+-- a bit overestimated so we do not need to change it often
+tCoShortenedUrlLength = 23
+
+tweetFromChangeSet :: OSMChangeSet -> String
+tweetFromChangeSet (OSMChangeSet csId user _ _ comment createdBy) = text ++ " http://www.openstreetmap.org/browse/changeset/" ++ (show csId)
+	where text = head $ dropWhile (\t -> length t > (140 - tCoShortenedUrlLength)) options
+	      options = [ commentOrNot ++ " by " ++ user ++ " (" ++ createdBy ++ ")",
+	                  commentOrNot ++ " by " ++ user,
+	                  commentOrNot ] ++ shortenedComments comment ++ [""]
+	      	where
+	      		shortenedComments comment = map (\e -> unwords e ++ " ...") $ reverse $ inits $ words comment
+	      commentOrNot = if comment == "" then "(no comment)" else comment

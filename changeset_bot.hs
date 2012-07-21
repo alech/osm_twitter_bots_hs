@@ -54,7 +54,7 @@ getChangeSetsAndTweet bb twitterBotConfig time csAlreadyPosted = do
 	let apiUrl = osmApiChangeSetUrl bb time
 	changeSets <- getChangeSets apiUrl
 	let relevantChangeSets = filter (\cs -> not (changeSetId cs `elem` csAlreadyPosted)) $ filter (\cs -> changeSetInsideBoundingBox cs bb) $ filter (not . open) changeSets
-	putStrLn $ show relevantChangeSets
+	mapM_ (putStrLn . tweetFromChangeSet) relevantChangeSets
 	return ()
 	-- update last_update_file
 
