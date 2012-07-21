@@ -1,7 +1,6 @@
 module Config
 	(
 	parseConfigFile,
-	BoundingBox(..),
 	osmApiChangeSetUrl
 	)
 	where
@@ -25,7 +24,7 @@ configFromMap :: YamlLight -> (BoundingBox, TwitterBotConfig)
 configFromMap yl =
 	(osmConfig, twitterBotConfig)
 	where lookupKey yl key = BC8.unpack $ fromJust $ unStr $ fromJust $ lookupYL (YStr $ BC8.pack key) yl
-	      osmConfig = BoundingBox minLat minLon maxLon maxLat
+	      osmConfig = BoundingBox minLat minLon maxLat maxLon
 	      	where minLat = read $ lookupKey yl "min_lat" :: Double
 	      	      minLon = read $ lookupKey yl "min_lon" :: Double
 	      	      maxLat = read $ lookupKey yl "max_lat" :: Double

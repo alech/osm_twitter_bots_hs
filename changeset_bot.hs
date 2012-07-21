@@ -3,19 +3,26 @@ module Main where
 import Tweet
 import Config
 import OSM
+import Updates
 
 import System.Directory (getHomeDirectory, doesFileExist)
 import System.FilePath ((</>))
 import System.Exit (exitFailure)
 import System.IO (hPutStrLn, stderr)
+import System.Locale (defaultTimeLocale)
+import Text.XML.Light (parseXML)
+import Data.Time.Clock (getCurrentTime)
+import Data.Time.Format (formatTime)
+import Network.Curl (curlGetString)
 
 main = do
-	configFile <- getConfigFilePath
+	configFile <- getConfigFilePath "config"
+	updateFile <- getConfigFilePath "last_update"
 	fileExists <- doesFileExist configFile
 	if not fileExists then
 		exitWithWarning
 	else
-		parseAndAct configFile
+		parseAndAct configFile updateFile
 
 exitWithWarning :: IO ()
 exitWithWarning = do
@@ -23,23 +30,36 @@ exitWithWarning = do
 	exitFailure
 
 -- ~/.changeset_bot.config
-getConfigFilePath :: IO FilePath
-getConfigFilePath = do
+getConfigFilePath :: String -> IO FilePath
+getConfigFilePath extension = do
 	homeDir <- getHomeDirectory
-	return $ homeDir </> ".changeset_bot.config"
+	return $ homeDir </> ".changeset_bot." ++ extension
 
-parseAndAct :: FilePath -> IO ()
-parseAndAct configFile = do
+parseAndAct :: FilePath -> FilePath -> IO ()
+parseAndAct configFile updateFile = do
+	currentTimeString <- getCurrentTimeString
+	putStrLn currentTimeString
 	configs <- parseConfigFile configFile
-	mapM_ (\(oConf, tConf) -> getChangeSetsAndTweet oConf tConf) configs
+	(lastUpdateTime, changeSetsAlreadyPosted) <- getUpdatesFromFile updateFile
+	mapM_ (\(oConf, tConf) -> getChangeSetsAndTweet oConf tConf lastUpdateTime changeSetsAlreadyPosted) configs
 	return ()
 
-getChangeSetsAndTweet :: BoundingBox -> TwitterBotConfig -> IO ()
-getChangeSetsAndTweet bb twitterBotConfig = do
-	let apiUrl = osmApiChangeSetUrl bb
-	putStrLn apiUrl
+getCurrentTimeString :: IO String
+getCurrentTimeString = do
+	time <- getCurrentTime
+	return (formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S+00:00" time)
+
+getChangeSetsAndTweet :: BoundingBox -> TwitterBotConfig -> String -> [Integer] -> IO ()
+getChangeSetsAndTweet bb twitterBotConfig time csAlreadyPosted = do
+	let apiUrl = osmApiChangeSetUrl bb time
+	changeSets <- getChangeSets apiUrl
+	putStrLn $ show changeSets
+	return ()
+	-- update last_update_file
 
 getChangeSets :: String -> IO [OSMChangeSet]
 getChangeSets url = do
-	-- get via curl, and pass to changeSetsFromXML
-	return []
+	-- FIXME deal with errors
+	curlResult <- curlGetString url []
+	putStrLn $ url
+	return (changeSetsFromXML $ parseXML $ snd curlResult)
